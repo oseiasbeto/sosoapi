@@ -19,19 +19,19 @@ const getPostsFeed = async (req, res) => {
             .sort({ created_at: -1 }) // Mais recentes primeiro
             .skip(skip)
             .limit(limit)
-            .populate('author', 'username name profile_image') // Popula username e profile_picture
+            .populate('author', 'username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image') // Popula username e profile_picture
             .populate({
                 path: 'original_post',
                 populate: [
                     {
                         path: "author",
-                        select: "name username profile_image"
+                        select: "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
                     },
                     {
                         path: "original_post",
                         populate: {
                             path: "author",
-                            select: "name username profile_image"
+                            select: "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
                         }
                     }
                 ]

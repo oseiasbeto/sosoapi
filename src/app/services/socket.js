@@ -16,7 +16,7 @@ const initializeSocket = (server) => {
     // Cria uma instância do servidor WebSocket e o associa ao servidor HTTP
     io = new Server(server, {
         cors: {
-            origin: ['http://192.168.1.129:8080', 'http://localhost:8080'], // Permite conexões apenas do frontend rodando em localhost:8080
+            origin: ['http://192.168.1.130:8080', 'http://localhost:8080'], // Permite conexões apenas do frontend rodando em localhost:8080
             methods: ['GET', 'POST'],        // Permite apenas os métodos GET e POST nas requisições WebSocket
             credentials: true                // Permite envio de cookies e credenciais junto à requisição
         }

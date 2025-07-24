@@ -5,18 +5,18 @@ const Post = require("../../../models/Post");
  * @param {Object} req - Requisição HTTP
  * @param {Object} res - Resposta HTTP
  */
-const getPostsByOriginalPost = async (req, res) => {
+const getPostsByUserId = async (req, res) => {
   try {
-    const originalPostId = req.params.id;
+    const userId = req.params.id;
     const page = parseInt(req.query.page) || 1; // Página atual (padrão: 1)
     const limit = parseInt(req.query.limit) || 10; // Limite por página (padrão: 10)
     const skip = (page - 1) * limit; // Quantidade de documentos a pular
 
     // Busca notificações com paginação, ordenadas por created_at (descendente)
     const posts = await Post.find({
-      original_post: originalPostId,
+      author: userId,
       is_repost: false,
-      is_reply: true,
+      is_reply: false,
     })
       .sort({ created_at: -1 }) // Mais recentes primeiro
       .skip(skip)
@@ -33,9 +33,9 @@ const getPostsByOriginalPost = async (req, res) => {
 
     // Conta o total de notificações para calcular totalPages
     const total = await Post.countDocuments({
-      original_post: originalPostId,
+      author: userId,
       is_repost: false,
-      is_reply: true,
+      is_reply: false,
     });
     const totalPages = Math.ceil(total / limit);
 
@@ -53,4 +53,4 @@ const getPostsByOriginalPost = async (req, res) => {
   }
 };
 
-module.exports = getPostsByOriginalPost;
+module.exports = getPostsByUserId;
