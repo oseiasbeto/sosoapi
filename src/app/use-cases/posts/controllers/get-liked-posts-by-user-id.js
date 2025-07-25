@@ -8,7 +8,8 @@ const getLikedPostsByUserId = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const posts = await Post.find({
-            likes: userId // Filtra posts onde o userId está no array "likes"
+            likes: userId, // Filtra posts onde o userId está no array "likes",
+            is_reply: false
         })
             .sort({ created_at: -1 })
             .skip(skip)

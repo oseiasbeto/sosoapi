@@ -9,7 +9,8 @@ const getPostsWithMediaByUserId = async (req, res) => {
 
         const posts = await Post.find({
             author: userId,
-            media: { $exists: true, $not: { $size: 0 } } // Filtra posts com mídia
+            media: { $exists: true, $not: { $size: 0 } }, // Filtra posts com mídia
+            is_reply: false
         })
             .sort({ created_at: -1 })
             .skip(skip)
