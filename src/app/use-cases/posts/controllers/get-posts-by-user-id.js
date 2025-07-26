@@ -37,6 +37,7 @@ const getPostsByUserId = async (req, res) => {
       is_repost: false,
       is_reply: false,
     });
+    
     const totalPages = Math.ceil(total / limit);
 
     // Formata a resposta
