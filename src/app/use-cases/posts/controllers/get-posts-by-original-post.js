@@ -11,6 +11,8 @@ const getPostsByOriginalPost = async (req, res) => {
     const page = parseInt(req.query.page) || 1; // Página atual (padrão: 1)
     const limit = parseInt(req.query.limit) || 10; // Limite por página (padrão: 10)
     const skip = (page - 1) * limit; // Quantidade de documentos a pular
+    const totalItems = parseInt(req.query.total) || 0; // Limite por página (padrão: 10)
+    const isLoad = req?.query?.is_load === "true" || false;
 
     // Busca notificações com paginação, ordenadas por created_at (descendente)
     const posts = await Post.find({
@@ -21,22 +23,29 @@ const getPostsByOriginalPost = async (req, res) => {
       .sort({ created_at: -1 }) // Mais recentes primeiro
       .skip(skip)
       .limit(limit)
-      .populate("author", "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image") // Popula username e profile_picture
+      .populate(
+        "author",
+        "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
+      ) // Popula username e profile_picture
       .populate({
         path: "original_post",
         populate: {
           path: "author",
-          select: "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+          select:
+            "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
         },
       })
       .lean(); // Converte para objeto JavaScript puro
 
-    // Conta o total de notificações para calcular totalPages
-    const total = await Post.countDocuments({
-      original_post: originalPostId,
-      is_repost: false,
-      is_reply: true,
-    });
+    if (!isLoad) {
+      total = await Post.countDocuments({
+        original_post: originalPostId,
+        is_repost: false,
+        is_reply: true,
+      });
+    } else {
+      total = totalItems;
+    }
     const totalPages = Math.ceil(total / limit);
 
     // Formata a resposta
