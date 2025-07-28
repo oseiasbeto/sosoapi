@@ -17,7 +17,7 @@ const toggleLikePost = require("./controllers/toggle-like-post")
 const toggleRepost = require("./controllers/toggle-repost")
 
 // configurando as rotas
-router.post("/", protectedRoute, createPost)
+router.post("/new-post", protectedRoute, createPost)
 router.get("/feed", protectedRoute, getPostsFeed)
 router.get("/following", protectedRoute, getFollowingPosts)
 router.get("/profile/feed/:id", protectedRoute, getPostsByUserId)

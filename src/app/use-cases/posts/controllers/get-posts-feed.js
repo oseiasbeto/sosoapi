@@ -56,7 +56,7 @@ const getPostsFeed = async (req, res) => {
       total = totalItems;
     }
     const totalPages = Math.ceil(total / limit);
-
+    
     // Formata a resposta
     res.status(200).json({
       posts,
