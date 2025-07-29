@@ -91,6 +91,11 @@ const user = new mongoose.Schema(
       },
     ],
 
+    followers_count: {
+      type: Number,
+      default: 0,
+    },
+
     // Lista de usuários que esse usuário segue.
     following: [
       {
@@ -98,6 +103,11 @@ const user = new mongoose.Schema(
         ref: "User",
       },
     ],
+
+    following_count: {
+      type: Number,
+      default: 0,
+    },
 
     // Lista de usuários inscritos para receber notificações deste usuário
     subscribers: [

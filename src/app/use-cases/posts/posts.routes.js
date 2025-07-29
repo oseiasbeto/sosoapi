@@ -15,6 +15,7 @@ const getFollowingPosts = require("./controllers/get-following-posts")
 const getLikedPostsByUserId = require("./controllers/get-liked-posts-by-user-id")
 const toggleLikePost = require("./controllers/toggle-like-post")
 const toggleRepost = require("./controllers/toggle-repost")
+const deletePostAndHierarchy = require("./controllers/delete-post-and-hierarchy")
 
 // configurando as rotas
 router.post("/new-post", protectedRoute, createPost)
@@ -28,6 +29,7 @@ router.get("/replies/:id", protectedRoute, getPostsByOriginalPost)
 router.get("/:id", protectedRoute, getPostById)
 router.put("/like/:id", protectedRoute, toggleLikePost)
 router.put("/repost/:id", protectedRoute, toggleRepost)
+router.delete("/:id", protectedRoute, deletePostAndHierarchy)
 
 // exportando as rotas
 module.exports = router
