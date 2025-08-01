@@ -12,7 +12,7 @@ const followUser = async (req, res) => {
             return res.status(400).json({ message: "O id do usuário a seguir é obrigatório." });
         }
 
-        const userToFollow = await User.findOne({ username: userIdToFollow }).select("username privacy_settings activity_status");
+        const userToFollow = await User.findOne({ _id: userIdToFollow }).select("username privacy_settings activity_status");
         if (!userToFollow) {
             return res.status(404).json({ message: "Usuário a seguir não encontrado." });
         }
