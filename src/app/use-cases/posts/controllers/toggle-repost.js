@@ -41,6 +41,9 @@ const toggleRepost = async (req, res) => {
           $pull: {
             reposts: user._id,
           },
+           $inc: {
+            reposts_count: -1
+          }
         });
 
         return res.status(200).json({ message: "Repost desfeito com sucesso" });
@@ -60,6 +63,9 @@ const toggleRepost = async (req, res) => {
           $push: {
             reposts: user._id,
           },
+          $inc: {
+            reposts_count: 1
+          }
         });
 
         return res.status(201).json({

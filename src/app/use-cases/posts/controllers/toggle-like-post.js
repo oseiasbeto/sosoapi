@@ -34,13 +34,15 @@ const toggleLikePost = async (req, res) => {
         // Verifica se o usuário já curtiu o post, se sim, remove o like (deslike)
         if (post.likes.includes(userId)) {
             post.likes = post.likes.filter(like => like.toString() !== userId); // Remove o ID do usuário da lista de likes
+            post.likes_count = post.likes_count - 1
             await post.save(); // Salva a alteração no banco
-
+            
             // Retorna uma resposta informando que o like foi removido com sucesso
             return res.status(200).json({ message: 'Like removido com sucesso' });
         } else {
             // Caso contrário, adiciona o like
             post.likes.push(userId); // Adiciona o usuário à lista de likes
+            post.likes_count = post.likes_count + 1
             await post.save(); // Salva o post atualizado no banco de dados
             
             // Retorna uma resposta informando que o like foi adicionado com sucesso

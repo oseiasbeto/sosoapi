@@ -1,5 +1,6 @@
 const Post = require("../../../models/Post.js");
 const Media = require("../../../models/Media.js");
+const User = require("../../../models/User.js");
 
 const createPost = async (req, res) => {
   try {
@@ -93,53 +94,69 @@ const createPost = async (req, res) => {
       original_post: originalPost ?? undefined,
     });
 
-    // Atualizar as mídias com a referência ao post
-    await Media.updateMany(
-      { _id: { $in: mediaDocs } },
-      { $set: { post: newPost._id } }
-    );
+    if (newPost) {
+      // Atualizar as mídias com a referência ao post
+      await Media.updateMany(
+        { _id: { $in: mediaDocs } },
+        { $set: { post: newPost._id } }
+      );
 
-    // Se for reply, atualizar o post original
-    if (isReply && originalPost) {
-      await Post.findByIdAndUpdate(originalPost, {
-        $push: { replies: newPost._id },
-      });
-    }
+      // Se for reply, atualizar o post original
+      if (isReply && originalPost) {
+        await Post.findByIdAndUpdate(originalPost, {
+          $push: { replies: newPost._id },
+          $inc: { replies_count: 1 }
+        });
+      }
 
-    // Popular os dados para retornar
-    const populatedPost = await Post.findById(newPost._id)
-      .populate(
-        "author",
-        "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
-      )
-      .populate({
-        path: "original_post",
-        populate: [
+      if (!isReply) {
+        await User.findOne(
           {
-            path: "author",
-            select:
-              "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+            _id: newPost.author,
           },
           {
-            path: "original_post",
-            populate: {
+            $inc: {
+              posts_count: 1,
+            },
+          }
+        );
+      }
+
+      // Popular os dados para retornar
+      const populatedPost = await Post.findById(newPost._id)
+        .populate(
+          "author",
+          "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
+        )
+        .populate({
+          path: "original_post",
+          populate: [
+            {
               path: "author",
               select:
                 "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
             },
-          },
-        ],
-      })
-      .populate({
-        path: "media",
-        select: "url type thumbnail format width height duration",
-      })
-      .lean();
-    // Retornar resposta
-    res.status(201).json({
-      new_post: populatedPost,
-      message: "Post criado com sucesso.",
-    });
+            {
+              path: "original_post",
+              populate: {
+                path: "author",
+                select:
+                  "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+              },
+            },
+          ],
+        })
+        .populate({
+          path: "media",
+          select: "url type thumbnail format width height duration",
+        })
+        .lean();
+      // Retornar resposta
+      res.status(201).json({
+        new_post: populatedPost,
+        message: "Post criado com sucesso.",
+      });
+    }
   } catch (error) {
     console.error("Erro ao criar post:", error);
     res.status(500).json({

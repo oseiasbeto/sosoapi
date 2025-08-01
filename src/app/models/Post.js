@@ -26,6 +26,10 @@ const post = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    shares_count: {
+      type: Number,
+      default: 0,
+    },
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -64,7 +68,12 @@ const post = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    /* 
     original_repost: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+    },*/
+    shared_post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
     },
