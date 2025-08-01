@@ -23,6 +23,10 @@ const getPostsByOriginalPost = async (req, res) => {
       .sort({ created_at: -1 }) // Mais recentes primeiro
       .skip(skip)
       .limit(limit)
+      .populate({
+        path: "media",
+        select: "url _id type format thumbnail duration post",
+      })
       .populate(
         "author",
         "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"

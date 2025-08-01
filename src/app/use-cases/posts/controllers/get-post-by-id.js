@@ -2,39 +2,47 @@
 const Post = require("../../../models/Post");
 
 const getPostById = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        // Verifica se o token foi enviado na requisição
-        if (!id) {
-            return res.status(400).json({ message: "O id e obrigatorio." });
-        }
-
-        const post = await Post.findOne({ _id: id })
-            .populate('author', 'username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image') // Popula username e profile_picture
-            .populate({
-                path: 'original_post',
-                populate: {
-                    path: "author",
-                    select: "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
-                }
-            })
-            .lean(); // Converte para objeto JavaScript puro
-
-        if (!post) {
-            return res.status(404).json({ message: "Post nao encontrado" });
-        } else {
-            return res.status(200).json({
-                post,
-                message: "Postagem encontrada com sucesso."
-            });
-        }
-    } catch (err) {
-        // Em caso de erro, exibe no console e retorna uma resposta de erro ao cliente
-        console.error("Erro ao buscar a postagem pelo id:", err);
-        return res.status(500).json({ message: "Erro interno no servidor" });
+    // Verifica se o token foi enviado na requisição
+    if (!id) {
+      return res.status(400).json({ message: "O id e obrigatorio." });
     }
-}
+
+    const post = await Post.findOne({ _id: id })
+      .populate(
+        "author",
+        "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
+      ) // Popula username e profile_picture
+      .populate({
+        path: "original_post",
+        populate: {
+          path: "author",
+          select:
+            "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+        },
+      })
+      .populate({
+        path: "media",
+        select: "url _id type format thumbnail duration post",
+      })
+      .lean(); // Converte para objeto JavaScript puro
+
+    if (!post) {
+      return res.status(404).json({ message: "Post nao encontrado" });
+    } else {
+      return res.status(200).json({
+        post,
+        message: "Postagem encontrada com sucesso.",
+      });
+    }
+  } catch (err) {
+    // Em caso de erro, exibe no console e retorna uma resposta de erro ao cliente
+    console.error("Erro ao buscar a postagem pelo id:", err);
+    return res.status(500).json({ message: "Erro interno no servidor" });
+  }
+};
 
 // Exporta a função para que possa ser usada em outras partes do projeto
 module.exports = getPostById;

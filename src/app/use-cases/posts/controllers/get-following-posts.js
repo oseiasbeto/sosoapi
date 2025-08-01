@@ -30,7 +30,11 @@ const getFollowingPosts = async (req, res) => {
       .populate(
         "author",
         "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
-      ) // Campos mínimos do autor
+      )
+      .populate({
+        path: "media",
+        select: "url _id type format thumbnail duration post",
+      })
       .populate({
         path: "original_post",
         populate: {
