@@ -25,7 +25,7 @@ const getPostsByUserId = async (req, res) => {
       .limit(limit)
       .populate(
         "author",
-        "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
+        "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
       )
         .populate({
         path: "media",
@@ -36,7 +36,7 @@ const getPostsByUserId = async (req, res) => {
         populate: {
           path: "author",
           select:
-            "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+            "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
         },
       })
       .lean(); // Converte para objeto JavaScript puro

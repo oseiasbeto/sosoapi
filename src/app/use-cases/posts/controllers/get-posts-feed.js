@@ -27,7 +27,7 @@ const getPostsFeed = async (req, res) => {
       })
       .populate(
         "author",
-        "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
+        "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
       ) // Popula username e profile_picture
       .populate({
         path: "original_post",
@@ -35,14 +35,14 @@ const getPostsFeed = async (req, res) => {
           {
             path: "author",
             select:
-              "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+              "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
           },
           {
             path: "original_post",
             populate: {
               path: "author",
               select:
-                "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+                "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
             },
           },
         ],
