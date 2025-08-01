@@ -23,12 +23,14 @@ const auth = require("./use-cases/auth/auth.routes")
 const users = require("./use-cases/users/users.routes")
 const notifications = require("./use-cases/notifications/notifications.routes")
 const posts = require("./use-cases/posts/posts.routes")
+const media = require("./use-cases/media/media.routes")
 
 // Registrando as rotas no aplicativo
 app.use("/v1/auth", auth) // Rotas de autenticacao
 app.use("/v1/users", users)
 app.use("/v1/notifications", notifications)
 app.use("/v1/posts", posts) // Rotas de postagens
+app.use("/v1/media", media) // Rotas de postagens
 
 // Rota de boas-vindas
 app.get("/", (req, res) => {
