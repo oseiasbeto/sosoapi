@@ -25,7 +25,6 @@ const getPostsWithMediaByUserId = async (req, res) => {
         path: "media",
         select: "url _id type format thumbnail duration post",
       })
-      .populate("media") // Popula os dados da mídia
       .populate({
         path: "original_post",
         populate: {

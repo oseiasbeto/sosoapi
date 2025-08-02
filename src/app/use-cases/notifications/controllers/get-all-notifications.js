@@ -19,7 +19,7 @@ const getAllNotifications = async (req, res) => {
     const notifications = await Notifications.find({
       recipient: userId
     })
-      .sort({ created_at: -1 }) // Mais recentes primeiro
+      .sort({ updated_at: -1 }) // Mais recentes primeiro
       .skip(skip)
       .limit(limit)
       .populate(

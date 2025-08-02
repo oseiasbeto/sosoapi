@@ -142,7 +142,7 @@ const user = new mongoose.Schema(
     // Contagem de notificações não lidas.
     unread_notifications_count: {
       type: Number,
-      default: 0,
+      default: 0
     },
 
     // Contagem de mensagens não lidas.

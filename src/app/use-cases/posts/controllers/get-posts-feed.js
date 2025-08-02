@@ -23,7 +23,7 @@ const getPostsFeed = async (req, res) => {
       .limit(limit)
       .populate({
         path: "media",
-        select: "url _id type format thumbnail duration post"
+        select: "url _id type format thumbnail duration post",
       })
       .populate(
         "author",
@@ -38,12 +38,22 @@ const getPostsFeed = async (req, res) => {
               "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
           },
           {
+            path: "media",
+            select: "url _id type format thumbnail duration post",
+          },
+          {
             path: "original_post",
-            populate: {
-              path: "author",
-              select:
-                "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
-            },
+            populate: [
+              {
+                path: "author",
+                select:
+                  "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
+              },
+              {
+                path: "media",
+                select: "url _id type format thumbnail duration post",
+              }
+            ],
           },
         ],
       })
@@ -60,7 +70,7 @@ const getPostsFeed = async (req, res) => {
       total = totalItems;
     }
     const totalPages = Math.ceil(total / limit);
-    
+
     // Formata a resposta
     res.status(200).json({
       posts,

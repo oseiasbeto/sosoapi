@@ -37,11 +37,17 @@ const getFollowingPosts = async (req, res) => {
       })
       .populate({
         path: "original_post",
-        populate: {
-          path: "author",
-          select:
-            "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
-        },
+        populate: [
+          {
+            path: "author",
+            select:
+              "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+          },
+          {
+            path: "media",
+            select: "url _id type format thumbnail duration post",
+          },
+        ],
       })
       .lean();
 

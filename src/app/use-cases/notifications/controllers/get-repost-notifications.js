@@ -20,7 +20,7 @@ const getRepostNotifications = async (req, res) => {
       recipient: userId,
       type: 'repost'
     })
-      .sort({ created_at: -1 }) // Mais recentes primeiro
+      .sort({ updated_at: -1 }) // Mais recentes primeiro
       .skip(skip)
       .limit(limit)
       .populate(

@@ -5,7 +5,7 @@ const { getIO } = require("../../../services/socket");
 
 const followUser = async (req, res) => {
   try {
-    const { userIdToFollow, isFollowBack = false } = req.body;
+    const { userIdToFollow } = req.body;
     const loggedUserId = req.user.id;
 
     if (!userIdToFollow) {
@@ -15,7 +15,7 @@ const followUser = async (req, res) => {
     }
 
     const userToFollow = await User.findOne({ _id: userIdToFollow }).select(
-      "username privacy_settings activity_status"
+      "username privacy_settings activity_status followers followers_count"
     );
     if (!userToFollow) {
       return res
@@ -28,6 +28,16 @@ const followUser = async (req, res) => {
         .status(400)
         .json({ message: "Você não pode seguir a si mesmo." });
     }
+
+    const user = await User.findOne({ _id: loggedUserId }).select("followers");
+    if (!user) {
+      return res
+        .status(400)
+        .json({ message: "Houve um erro, tente novamente!" });
+    }
+
+    // Verifica se o usuário a seguir já segue o usuário logado
+    const isFollowBack = user.followers.includes(userToFollow._id.toString());
 
     const existingRelationship = await Relationship.findOne({
       follower: loggedUserId,
@@ -44,7 +54,10 @@ const followUser = async (req, res) => {
       await Relationship.deleteOne({ _id: existingRelationship._id });
       await User.updateOne(
         { _id: loggedUserId },
-        { $pull: { following: userToFollow._id }, $inc: { following_count: -1 } }
+        {
+          $pull: { following: userToFollow._id },
+          $inc: { following_count: -1 },
+        }
       );
       await User.updateOne(
         { _id: userToFollow._id },
@@ -58,19 +71,7 @@ const followUser = async (req, res) => {
       });
     } else {
       // Follow
-      if (isFollowBack && !isFollowedBy) {
-        return res.status(400).json({
-          message:
-            "Você não pode seguir de volta porque este usuário não te segue.",
-          isFollowing: false,
-          isFollowedBy: false,
-        });
-      }
-
-      const status =
-        userToFollow.privacy_settings.profile_visibility === "private"
-          ? "pending"
-          : "active";
+      const status = "active";
 
       const newRelationship = new Relationship({
         follower: loggedUserId,
@@ -79,198 +80,244 @@ const followUser = async (req, res) => {
       });
       await newRelationship.save();
 
-      if (status === "active") {
-        await User.updateOne(
-          { _id: loggedUserId },
-          { $addToSet: { following: userToFollow._id }, $inc: { following_count: 1 } }
-        );
-        await User.updateOne(
-          { _id: userToFollow._id },
-          { $addToSet: { followers: loggedUserId }, $inc: { followers_count: 1 } }
-        );
-      }
+      await User.updateOne(
+        { _id: loggedUserId },
+        {
+          $addToSet: { following: userToFollow._id },
+          $inc: { following_count: 1 },
+        }
+      );
+      await User.updateOne(
+        { _id: userToFollow._id },
+        { $addToSet: { followers: loggedUserId }, $inc: { followers_count: 1 } }
+      );
 
-      const notificationType =
-        status === "pending" ? "follow_request" : "follow";
+      const notificationType = "follow";
       const timeThreshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-      let existingNotification = await Notification.findOne({
-        recipient: userToFollow._id,
-        type: notificationType,
-        created_at: { $gte: timeThreshold },
-      }).populate({
-        path: "target",
-        select: "content text author post follower following status created_at",
-        populate: {
-          path: "follower following",
-          select: "username profile_image name",
-        },
-      });
+      // Busca notificação existente
+      let existingNotification = null;
+      if (!isFollowBack) {
+        // Para "seguir", verifica notificações agrupadas
+        existingNotification = await Notification.findOne({
+          recipient: userToFollow._id,
+          type: notificationType,
+          senders: loggedUserId, // Verifica se o remetente já está na notificação
+          created_at: { $gte: timeThreshold },
+        }).populate({
+          path: "target",
+          select: "content text author post follower following status created_at",
+          populate: {
+            path: "follower following",
+            select: "username profile_image name",
+          },
+        });
+      } else {
+        // Para "seguir de volta", verifica se já existe uma notificação para o mesmo remetente
+        existingNotification = await Notification.findOne({
+          recipient: userToFollow._id,
+          type: notificationType,
+          senders: loggedUserId,
+          message: "seguiu você de volta.",
+          created_at: { $gte: timeThreshold },
+        });
+      }
 
       const io = getIO();
 
       if (existingNotification) {
-        let updatedSenders = [...existingNotification.senders];
-        let isNewSender = false;
-        if (
-          !updatedSenders.find(
-            (sender) => sender._id.toString() === loggedUserId.toString()
-          )
-        ) {
-          updatedSenders.push(loggedUserId);
-          isNewSender = true;
-        }
-
-        const senderNames = await User.find(
-          { _id: { $in: updatedSenders.slice(0, 2) } },
-          "name"
-        ).lean();
-
-        // Concatena até dois nomes com <b></b>
-        const names = senderNames
-          .map((user) => `<b>${user.name}</b>`)
-          .join(", ");
-        const totalSenders = updatedSenders.length;
-
-        // Define a mensagem com base no número de remetentes
-        let message =
-          totalSenders === 1
-            ? `${names} ${
-                notificationType === "follow"
-                  ? "começou a seguir você"
-                  : "solicitou seguir você"
-              }.`
-            : totalSenders === 2
-            ? `${names} ${
-                notificationType === "follow"
-                  ? "começaram a seguir você"
-                  : "solicitaram seguir você"
-              }.`
-            : `${names} e mais ${totalSenders - 2} pessoa${
-                totalSenders - 2 > 1 ? "s" : ""
-              } ${
-                notificationType === "follow"
-                  ? "começaram a seguir você"
-                  : "solicitaram seguir você"
-              }.`;
-
-        if (isFollowBack && existingNotification.senders.length === 1) {
-          message = `<b>${req.user.name}</b> seguiu você de volta.`;
-        }
-
-        // Atualiza a notificação com a nova mensagem
-        await existingNotification.updateOne({
-          $set: { message },
-        });
-
-        // Adiciona o novo remetente, se necessário
-        if (isNewSender) {
-          await existingNotification.updateOne({
-            $push: { senders: loggedUserId },
-          });
-        }
-
-        // Busca detalhes dos remetentes para o socket
-        const senderDetails = await User.find(
-          { _id: { $in: updatedSenders } },
-          "username profile_image name"
-        ).lean();
-
-        // Envia notificação em tempo real apenas se houver mudança relevante
-        if (
-          userToFollow.activity_status.is_active &&
-          userToFollow.activity_status.socket_id
-        ) {
-          console.log(
-            "Emitindo newNotification para socket:",
-            userToFollow.activity_status.socket_id
-          );
-          io.to(userToFollow.activity_status.socket_id).emit(
-            "newNotification",
-            {
-              id: existingNotification._id,
-              type: notificationType,
-              message: message,
-              created_at: existingNotification.created_at,
-              target: {
-                follower: newRelationship.follower,
-                following: newRelationship.following,
-                status: newRelationship.status,
-              },
-              target_model: "Relationship",
-              senders: senderDetails.map((sender) => ({
-                id: sender._id,
-                username: sender.username,
-                profile_image: sender.profile_image || null,
-                name: sender.name,
-              })),
-            }
-          );
-        }
+        // Se já existe uma notificação com o mesmo remetente, não faz nada
+        console.log(
+          `Notificação já existe para o remetente ${loggedUserId}, ação ignorada.`
+        );
       } else {
-        const message = isFollowBack
-          ? `<b>${req.user.name}</b> seguiu você de volta.`
-          : `<b>${req.user.name}</b> ${
-              notificationType === "follow"
-                ? "começou a seguir você"
-                : "solicitou seguir você"
-            }.`;
+        if (!isFollowBack) {
+          // Lógica de agrupamento para notificações de "seguir"
+          existingNotification = await Notification.findOne({
+            recipient: userToFollow._id,
+            type: notificationType,
+            created_at: { $gte: timeThreshold },
+          }).populate({
+            path: "target",
+            select: "content text author post follower following status created_at",
+            populate: {
+              path: "follower following",
+              select: "username profile_image name",
+            },
+          });
 
-        const notification = new Notification({
-          recipient: userToFollow._id,
-          senders: [loggedUserId],
-          type: notificationType,
-          target: newRelationship._id,
-          target_model: "Relationship",
-          message,
-        });
-        await notification.save();
+          if (existingNotification) {
+            let updatedSenders = [...existingNotification.senders];
+            let isNewSender = !updatedSenders.find(
+              (sender) => sender._id.toString() === loggedUserId.toString()
+            );
 
-        // Busca detalhes do remetente
-        const senderDetails = await User.find(
-          { _id: { $in: [loggedUserId] } },
-          "username profile_image name"
-        ).lean();
+            if (isNewSender) {
+              updatedSenders.push(loggedUserId);
 
-        // Envia notificação em tempo real
-        if (
-          userToFollow.activity_status.is_active &&
-          userToFollow.activity_status.socket_id
-        ) {
-          console.log(
-            "Emitindo newNotification para socket:",
-            userToFollow.activity_status.socket_id
-          );
-          io.to(userToFollow.activity_status.socket_id).emit(
-            "newNotification",
-            {
-              id: notification._id,
-              type: notificationType,
-              message: message,
-              created_at: notification.created_at,
-              target: {
-                follower: loggedUserId,
-                following: userToFollow._id,
-                status,
-              },
-              target_model: "Relationship",
-              senders: senderDetails.map((sender) => ({
-                id: sender._id,
-                username: sender.username,
-                profile_image: sender.profile_image || null,
-                name: sender.name,
-              })),
+              const totalSenders = updatedSenders.length;
+              let message =
+                totalSenders === 1
+                  ? "começou a seguir você."
+                  : "começaram a seguir você.";
+
+              // Atualiza a notificação existente
+              await existingNotification.updateOne({
+                $set: { message, read: false },
+                $push: { senders: loggedUserId },
+              });
+
+              // Busca detalhes dos remetentes
+              const senderDetails = await User.find(
+                { _id: { $in: updatedSenders } },
+                "username name profile_image verified"
+              ).lean();
+
+              // Incrementa contador de notificações não lidas
+              await userToFollow.updateOne({
+                $inc: { unread_notifications_count: 1 },
+              });
+
+              // Emite notificação em tempo real
+              if (
+                userToFollow.activity_status.is_active &&
+                userToFollow.activity_status.socket_id
+              ) {
+                console.log(
+                  "Emitindo newNotification para socket:",
+                  userToFollow.activity_status.socket_id
+                );
+                io.to(userToFollow.activity_status.socket_id).emit(
+                  "newNotification",
+                  {
+                    _id: existingNotification._id,
+                    type: notificationType,
+                    message,
+                    created_at: existingNotification.created_at,
+                    updated_at: Date.now(),
+                    target: {
+                      follower: newRelationship.follower,
+                      following: newRelationship.following,
+                      status: newRelationship.status,
+                    },
+                    target_model: "Relationship",
+                    senders: senderDetails,
+                  }
+                );
+              }
             }
-          );
+          } else {
+            // Cria nova notificação para "seguir" se não houver notificação agrupada
+            const message = "começou a seguir você.";
+            const notification = new Notification({
+              recipient: userToFollow._id,
+              senders: [loggedUserId],
+              type: notificationType,
+              target: newRelationship._id,
+              target_model: "Relationship",
+              message,
+              read: false,
+            });
+            await notification.save();
+
+            // Busca detalhes do remetente
+            const senderDetails = await User.find(
+              { _id: { $in: [loggedUserId] } },
+              "username name profile_image verified"
+            ).lean();
+
+            // Incrementa contador de notificações não lidas
+            await userToFollow.updateOne({
+              $inc: { unread_notifications_count: 1 },
+            });
+
+            // Emite notificação em tempo real
+            if (
+              userToFollow.activity_status.is_active &&
+              userToFollow.activity_status.socket_id
+            ) {
+              console.log(
+                "Emitindo newNotification para socket:",
+                userToFollow.activity_status.socket_id
+              );
+              io.to(userToFollow.activity_status.socket_id).emit(
+                "newNotification",
+                {
+                  _id: notification._id,
+                  type: notificationType,
+                  message,
+                  created_at: notification.created_at,
+                  updated_at: Date.now(),
+                  target: {
+                    follower: loggedUserId,
+                    following: userToFollow._id,
+                    status,
+                  },
+                  target_model: "Relationship",
+                  senders: senderDetails,
+                }
+              );
+            }
+          }
+        } else {
+          // Cria nova notificação para "seguir de volta"
+          const message = "seguiu você de volta.";
+          const notification = new Notification({
+            recipient: userToFollow._id,
+            senders: [loggedUserId],
+            type: notificationType,
+            target: newRelationship._id,
+            target_model: "Relationship",
+            message,
+            read: false,
+          });
+          await notification.save();
+
+          // Busca detalhes do remetente
+          const senderDetails = await User.find(
+            { _id: { $in: [loggedUserId] } },
+            "username name profile_image verified"
+          ).lean();
+
+          // Incrementa contador de notificações não lidas
+          await userToFollow.updateOne({
+            $inc: { unread_notifications_count: 1 },
+          });
+
+          // Emite notificação em tempo real
+          if (
+            userToFollow.activity_status.is_active &&
+            userToFollow.activity_status.socket_id
+          ) {
+            console.log(
+              "Emitindo newNotification para socket:",
+              userToFollow.activity_status.socket_id
+            );
+            io.to(userToFollow.activity_status.socket_id).emit(
+              "newNotification",
+              {
+                _id: notification._id,
+                type: notificationType,
+                message,
+                created_at: notification.created_at,
+                updated_at: Date.now(),
+                target: {
+                  follower: loggedUserId,
+                  following: userToFollow._id,
+                  status,
+                },
+                target_model: "Relationship",
+                senders: senderDetails,
+              }
+            );
+          }
         }
       }
 
       return res.status(200).json({
         message: isFollowBack
           ? "Você seguiu o usuário de volta com sucesso."
-          : `Você ${
-              status === "pending" ? "solicitou seguir" : "começou a seguir"
-            } o usuário com sucesso.`,
+          : "Você começou a seguir o usuário com sucesso.",
         isFollowing: status === "active",
         isFollowedBy: !!isFollowedBy,
         relationship: {

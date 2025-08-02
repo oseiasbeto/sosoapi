@@ -39,14 +39,15 @@ const authUser = async (req, res) => {
 
     // Busca o usuário pelo e-mail no banco de dados
     const user = await User.findOne({ email }).select(
-      "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
+      "username name verified account_verification_status activity_status blocked_users gender posts_count subscribers following password following_count followers followers_count bio email website cover_photo profile_image"
     );
+
 
     // Se o usuário não for encontrado, retorna erro de credenciais inválidas
     if (!user) {
       return res.status(401).json({ message: "Credenciais inválidas" });
-    }
-
+    }    
+    
     // Verifica se a conta do usuário está verificada
     if (user.account_verification_status !== "verified") {
       return res

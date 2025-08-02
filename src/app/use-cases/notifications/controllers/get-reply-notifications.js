@@ -20,7 +20,7 @@ const getReplyNotifications = async (req, res) => {
       recipient: userId,
       type: 'reply'
     })
-      .sort({ created_at: -1 }) // Mais recentes primeiro
+      .sort({ updated_at: -1 }) // Mais recentes primeiro
       .skip(skip)
       .limit(limit)
       .populate(
