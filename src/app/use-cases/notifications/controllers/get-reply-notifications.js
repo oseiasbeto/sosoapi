@@ -18,7 +18,7 @@ const getReplyNotifications = async (req, res) => {
     // Busca notificações com paginação, ordenadas por created_at (descendente)
     const notifications = await Notifications.find({
       recipient: userId,
-      type: 'reply'
+      type: "reply",
     })
       .sort({ updated_at: -1 }) // Mais recentes primeiro
       .skip(skip)
@@ -29,12 +29,31 @@ const getReplyNotifications = async (req, res) => {
       ) // Popula username e profile_picture
       .populate({
         path: "target",
-        select: "content text author post follower followed status created_at",
-        populate: {
-          path: "follower following", // Popula follower e followed dentro de Relationship
-          select:
-            "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
-        },
+        populate: [
+          {
+            path: "follower author following", // Popula follower e followed dentro de Relationship
+            select:
+              "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
+          },
+          {
+            path: "media",
+            select: "url _id type format thumbnail duration post",
+          },
+          {
+            path: "original_post",
+            populate: [
+              {
+                path: "author",
+                select:
+                  "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
+              },
+              {
+                path: "media",
+                select: "url _id type format thumbnail duration post",
+              },
+            ],
+          },
+        ],
       })
       .lean(); // Converte para objeto JavaScript puro
 
@@ -43,7 +62,8 @@ const getReplyNotifications = async (req, res) => {
 
     if (!isLoad) {
       total = await Notifications.countDocuments({
-        $or: [{ is_reply: false }, { is_repost: true }],
+        recipient: userId,
+        type: "reply",
       });
     } else {
       total = totalItems;

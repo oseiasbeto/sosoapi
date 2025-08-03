@@ -40,6 +40,7 @@ const notificationSchema = new mongoose.Schema(
       enum: ["Post", "Relationship", "User", null],
       required: false,
     },
+    module: String, // Módulo relacionado à notificação (ex: "posts", "profiles")
     message: {
       type: String,
       trim: true,

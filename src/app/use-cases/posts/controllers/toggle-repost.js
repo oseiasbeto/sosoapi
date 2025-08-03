@@ -8,6 +8,7 @@ const toggleRepost = async (req, res) => {
   try {
     const postId = req.params.id; // ID do post a ser repostado
     const userId = req.user.id; // ID do usuário autenticado (vindo do middleware de autenticação)
+    const postModule = req.query.post_module || "feed"; // Módulo do post, se fornecido
 
     // Validar se o postId é válido
     if (!mongoose.Types.ObjectId.isValid(postId)) {
@@ -15,10 +16,23 @@ const toggleRepost = async (req, res) => {
     }
 
     // Buscar o post original
-    const originalPost = await Post.findById(postId).populate(
-      "author",
-      "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
-    );
+    const originalPost = await Post.findById(postId)
+      .populate(
+        "author",
+        "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
+      )
+      .populate({
+        path: "media",
+        select: "url _id type format thumbnail duration post",
+      })
+      .populate({
+        path: "original_post",
+        populate: {
+          path: "author",
+          select:
+            "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
+        },
+      });
 
     if (!originalPost) {
       return res.status(404).json({ error: "Post não encontrado" });
@@ -165,6 +179,7 @@ const toggleRepost = async (req, res) => {
                     _id: existingNotification._id,
                     type: notificationType,
                     message,
+                    module: existingNotification.module,
                     created_at: existingNotification.created_at,
                     updated_at: Date.now(),
                     target: originalPost,
@@ -183,6 +198,7 @@ const toggleRepost = async (req, res) => {
               type: notificationType,
               target: originalPost._id,
               target_model: "Post",
+              module: postModule,
               message,
               read: false,
             });
@@ -212,6 +228,7 @@ const toggleRepost = async (req, res) => {
                 _id: notification._id,
                 type: notificationType,
                 message,
+                module: notification.module,
                 created_at: notification.created_at,
                 updated_at: Date.now(),
                 target: originalPost,

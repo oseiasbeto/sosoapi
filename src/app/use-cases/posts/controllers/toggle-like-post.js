@@ -7,6 +7,7 @@ const toggleLikePost = async (req, res) => {
   try {
     const postId = req.params.id; // Recupera o ID do post a partir dos parâmetros da URL
     const userId = req.user.id; // Recupera o ID do usuário da sessão autenticada (req.user)
+    const postModule = req.query.post_module || "feed"; // Recupera o módulo do post, se fornecido
 
     // Verifica se o usuário atual existe no banco de dados
     const user = await User.findById(userId);
@@ -15,10 +16,23 @@ const toggleLikePost = async (req, res) => {
     }
 
     // Encontra o post pelo ID
-    const post = await Post.findById(postId).populate(
-      "author",
-      "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
-    );
+    const post = await Post.findById(postId)
+      .populate(
+        "author",
+        "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
+      )
+      .populate({
+        path: "media",
+        select: "url _id type format thumbnail duration post",
+      })
+      .populate({
+        path: "original_post",
+        populate: {
+          path: "author",
+          select:
+            "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image",
+        },
+      });
 
     if (!post) {
       return res.status(400).json({ message: "Post não encontrado" });
@@ -149,6 +163,7 @@ const toggleLikePost = async (req, res) => {
                     _id: existingNotification._id,
                     type: notificationType,
                     message,
+                    module: existingNotification.module,
                     created_at: existingNotification.created_at,
                     updated_at: Date.now(),
                     target: post,
@@ -170,6 +185,7 @@ const toggleLikePost = async (req, res) => {
               type: notificationType,
               target: post._id,
               target_model: "Post",
+              module: postModule,
               message,
               read: false,
             });
@@ -199,6 +215,7 @@ const toggleLikePost = async (req, res) => {
                 _id: notification._id,
                 type: notificationType,
                 message,
+                module: notification.module,
                 created_at: notification.created_at,
                 updated_at: Date.now(),
                 target: post,

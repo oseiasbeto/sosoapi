@@ -36,6 +36,7 @@ const createPost = async (req, res) => {
 
     const { content, media, isReply, originalPost } = sanitizedBody;
     const userId = req.user.id;
+    const postModule = req.query.post_module || "feed";
 
     // Validação manual
     if (!content.trim() && media.length === 0) {
@@ -165,8 +166,38 @@ const createPost = async (req, res) => {
         { $set: { post: newPost._id } }
       );
 
+      // Popular os dados para retornar
+      const populatedPost = await Post.findById(newPost._id)
+        .populate(
+          "author",
+          "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
+        )
+        .populate({
+          path: "original_post",
+          populate: [
+            {
+              path: "author",
+              select:
+                "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+            },
+            {
+              path: "original_post",
+              populate: {
+                path: "author",
+                select:
+                  "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
+              },
+            },
+          ],
+        })
+        .populate({
+          path: "media",
+          select: "url type thumbnail format width height duration",
+        })
+        .lean();
+
       // Se for reply, atualizar o post original e criar notificação
-      if (isReply && originalPostDoc) {
+      if (isReply && originalPostDoc && populatedPost) {
         await Post.findByIdAndUpdate(originalPost, {
           $push: { replies: newPost._id },
           $inc: { replies_count: 1 },
@@ -197,7 +228,8 @@ const createPost = async (req, res) => {
               recipient: originalPostDoc.author._id,
               senders: [userId],
               type: notificationType,
-              target: originalPostDoc._id,
+              target: populatedPost._id,
+              module: postModule,
               target_model: "Post",
               message,
               read: false,
@@ -226,9 +258,10 @@ const createPost = async (req, res) => {
                 _id: notification._id,
                 type: notificationType,
                 message,
+                module: notification.module,
                 created_at: notification.created_at,
                 updated_at: Date.now(),
-                target: originalPostDoc,
+                target: populatedPost,
                 target_model: "Post",
                 senders: senderDetails,
               }
@@ -287,6 +320,7 @@ const createPost = async (req, res) => {
                 senders: [userId],
                 type: notificationType,
                 target: originalPostDoc._id,
+                module: postModule,
                 target_model: "Post",
                 message,
                 read: false,
@@ -310,35 +344,6 @@ const createPost = async (req, res) => {
         }
       }
 
-      // Popular os dados para retornar
-      const populatedPost = await Post.findById(newPost._id)
-        .populate(
-          "author",
-          "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image"
-        )
-        .populate({
-          path: "original_post",
-          populate: [
-            {
-              path: "author",
-              select:
-                "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
-            },
-            {
-              path: "original_post",
-              populate: {
-                path: "author",
-                select:
-                  "username name verified activity_status blocked_users gender posts_count subscribers following followers bio email website cover_photo profile_image",
-              },
-            },
-          ],
-        })
-        .populate({
-          path: "media",
-          select: "url type thumbnail format width height duration",
-        })
-        .lean();
       // Retornar resposta
       res.status(201).json({
         new_post: populatedPost,

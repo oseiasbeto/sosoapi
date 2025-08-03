@@ -27,9 +27,9 @@ const getPostsByUserId = async (req, res) => {
         "author",
         "username name verified activity_status blocked_users gender posts_count subscribers following following_count followers followers_count bio email website cover_photo profile_image"
       )
-        .populate({
+      .populate({
         path: "media",
-        select: "url _id type format thumbnail duration post"
+        select: "url _id type format thumbnail duration post",
       })
       .populate({
         path: "original_post",
