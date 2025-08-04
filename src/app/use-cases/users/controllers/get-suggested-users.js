@@ -53,6 +53,8 @@ const getSuggestedUsers = async (req, res) => {
           activity_status: 1,
           posts_count: 1,
           cover_photo: 1,
+          followers: 1,
+          following: 1,
           followers_count: 1,
           following_count: 1,
           bio: 1,
