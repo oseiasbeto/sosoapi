@@ -118,16 +118,6 @@ const user = new mongoose.Schema(
       },
     ],
 
-    // IDs de autenticação social para login via Google e Facebook.
-    google_id: {
-      type: String,
-      default: null,
-    },
-    facebook_id: {
-      type: String,
-      default: null,
-    },
-
     // Contagem de posts do usuário.
     posts_count: {
       type: Number,
@@ -228,13 +218,13 @@ const user = new mongoose.Schema(
     privacy_settings: {
       profile_visibility: {
         type: String,
-        enum: ["public", "friends_only", "private"],
+        enum: ["public", "followers", "private"],
         default: "public",
       },
       message_privacy: {
         type: String,
-        enum: ["public", "friends_only", "private"],
-        default: "friends_only",
+        enum: ["public", "followers", "private"],
+        default: "public"
       },
     },
 

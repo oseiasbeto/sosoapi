@@ -1,11 +1,12 @@
 const Post = require("../../../models/Post");
+const User = require("../../../models/User");
 
 /**
  * Busca todas as notificações do usuário logado com paginação.
  * @param {Object} req - Requisição HTTP
  * @param {Object} res - Resposta HTTP
  */
-const getPostsFeed = async (req, res) => {
+const getFeedPosts = async (req, res) => {
   try {
     const userId = req.user.id; // ID do usuário logado
     const page = parseInt(req.query.page) || 1; // Página atual (padrão: 1)
@@ -14,10 +15,27 @@ const getPostsFeed = async (req, res) => {
     const totalItems = parseInt(req.query.total) || 0; // Limite por página (padrão: 10)
     const isLoad = (req.query.is_load && req.query.is_load === "true") || false;
 
+    // Buscar informações do usuário logado para excluir posts próprios e bloqueados
+    const currentUser = await User.findById(userId)
+      .select("blocked_users")
+      .lean();
+    if (!currentUser) {
+      return res.status(404).json({ message: "Usuário não encontrado." });
+    }
+
     // Busca notificações com paginação, ordenadas por created_at (descendente)
-    const posts = await Post.find({
-      $or: [{ is_reply: false }, { is_repost: true }],
-    })
+    const filter = {
+      $and: [
+        // Incluir apenas posts ou reposts
+        { $or: [{ is_reply: false }, { is_repost: true }] },
+        // Excluir posts do usuário logado
+        { author: { $ne: userId } },
+        // Excluir posts de usuários bloqueados
+        { author: { $nin: currentUser.blocked_users || [] } },
+      ],
+    };
+
+    const posts = await Post.find(filter)
       .sort({ created_at: -1 }) // Mais recentes primeiro
       .skip(skip)
       .limit(limit)
@@ -52,7 +70,7 @@ const getPostsFeed = async (req, res) => {
               {
                 path: "media",
                 select: "url _id type format thumbnail duration post",
-              }
+              },
             ],
           },
         ],
@@ -85,4 +103,4 @@ const getPostsFeed = async (req, res) => {
   }
 };
 
-module.exports = getPostsFeed;
+module.exports = getFeedPosts;

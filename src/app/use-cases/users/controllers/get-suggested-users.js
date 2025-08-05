@@ -11,6 +11,8 @@ const getSuggestedUsers = async (req, res) => {
     const page = parseInt(req.query.page) || 1; // Página atual (padrão: 1)
     const limit = parseInt(req.query.limit) || 5; // Limite por página (padrão: 5)
     const skip = (page - 1) * limit; // Quantidade de documentos a pular
+    const totalItems = parseInt(req.query.total) || 0; // Total de itens para otimização
+    const isLoad = req?.query.is_load === "true" || false; // Indicador de carregamento incremental
 
     // Verifica se o userId foi enviado
     if (!userId) {
@@ -65,9 +67,16 @@ const getSuggestedUsers = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+    // Contar total de resultados (se não for carregamento incremental)
+    let total;
 
+    // Se não for carregamento incremental, contar total de usuários
+    if (!isLoad) {
+      total = await User.countDocuments(matchCriteria);
+    } else {
+      total = totalItems;
+    }
     // Conta o total de usuários que atendem aos critérios
-    const total = await User.countDocuments(matchCriteria);
     const totalPages = Math.ceil(total / limit);
 
     // Formata a resposta
